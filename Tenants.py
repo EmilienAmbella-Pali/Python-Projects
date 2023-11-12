@@ -1,6 +1,6 @@
 import datetime
 import tkinter as tk
-from tkinter import simpledialog, messagebox
+from tkinter import simpledialog
 
 # Define the rent for each tenant in a dictionary
 tenant_rents = {
@@ -66,14 +66,18 @@ def update_savings():
     global savings_up_to_date  # Access the global savings variable
     total_expenses = sum(monthly_expenses.values())
     savings_up_to_date = total_income + total_expenses
-    show_savings.set(f"Accumulated Savings up to month {current_month}: £{accumulated_savings}")
+    show_savings.set(f"Accumulated Capital up to month {current_month}: £{savings_up_to_date}")
 
 # Calculate accumulated savings
-accumulated_savings = sum(total_income - total_expenses for month in range(1, current_month + 1))
+accumulated_savings = 0
+for month in range(1, current_month + 1):
+    total_income_month = sum(tenant_rents.get(tenant, 0) for tenants in payment_schedule.values() for tenant in tenants)
+    total_expenses_month = sum(monthly_expenses[expense] for expense in monthly_expenses)
+    accumulated_savings += total_income_month + total_expenses_month
 
 # Create a label to display savings
 show_savings = tk.StringVar()
-show_savings.set(f"Accumulated Savings up to month {current_month}: £{accumulated_savings}")
+show_savings.set(f"Accumulated Capital up to month {current_month}: £{accumulated_savings}")
 savings_label = tk.Label(root, textvariable=show_savings)
 savings_label.pack()
 
@@ -107,12 +111,18 @@ show_summary_button.pack()
 
 # Function to display the annual financial summary
 def show_annual_summary():
-    total_annual_income = total_income * current_month
-    total_annual_expenses = total_expenses * current_month
-    savings_up_to_year = total_annual_income + total_annual_expenses
-    annual_summary = f"Total income for the year: £{total_annual_income}\n"
-    annual_summary += f"Total expenses for the year: £{total_annual_expenses}\n"
-    annual_summary += f"Savings up to year: £{savings_up_to_year}"
+    # Calculate accumulated savings and total expenses from January to the current month
+    accumulated_savings = 0
+    total_expenses_up_to_month = 0
+    for month in range(1, current_month + 1):
+        total_income_month = sum(tenant_rents.get(tenant, 0) for tenants in payment_schedule.values() for tenant in tenants)
+        total_expenses_month = sum(monthly_expenses[expense] for expense in monthly_expenses)
+        accumulated_savings += total_income_month + total_expenses_month
+        total_expenses_up_to_month += total_expenses_month
+
+    # Display the annual summary
+    annual_summary = f"Accumulated Capital up to month {current_month}: £{accumulated_savings}\n"
+    annual_summary += f"Total Expenses up to month {current_month}: £{total_expenses_up_to_month}"
     create_summary_window("Annual Financial Summary", annual_summary, 14)  # 14 is the font size
 
 # Create a button to display the annual financial summary
