@@ -61,24 +61,24 @@ def add_tenants():
             tenant_rents[tenant_name] = rent
             update_savings()
 
-# Function to edit tenants
+# Function to edit or remove tenants
 def edit_tenants():
     tenant_name = simpledialog.askstring("Edit Tenant", "Enter the name of the tenant to edit:")
     if tenant_name in tenant_rents:
-        new_rent = simpledialog.askinteger("Edit Tenant", f"Enter the new monthly rent for {tenant_name}:",
-                                           initialvalue=tenant_rents[tenant_name])
-        if new_rent is not None:
-            tenant_rents[tenant_name] = new_rent
-            update_savings()
-    else:
-        messagebox.showerror("Error", f"Tenant '{tenant_name}' not found.")
-
-# Function to remove tenants
-def remove_tenants():
-    tenant_name = simpledialog.askstring("Remove Tenant", "Enter the name of the tenant to remove:")
-    if tenant_name in tenant_rents:
-        del tenant_rents[tenant_name]
-        update_savings()
+        action = simpledialog.askstring("Edit Tenant", f"Select action for {tenant_name}:\n\n"
+                                                         "1. Edit Tenant\n"
+                                                         "2. Delete Tenant\n")
+        if action == "1":
+            new_rent = simpledialog.askinteger("Edit Tenant", f"Enter the new monthly rent for {tenant_name}:",
+                                               initialvalue=tenant_rents[tenant_name])
+            if new_rent is not None:
+                tenant_rents[tenant_name] = new_rent
+                update_savings()
+        elif action == "2":
+            confirm = messagebox.askyesno("Confirm Deletion", f"Are you sure you want to delete {tenant_name}?")
+            if confirm:
+                del tenant_rents[tenant_name]
+                update_savings()
     else:
         messagebox.showerror("Error", f"Tenant '{tenant_name}' not found.")
 
@@ -138,13 +138,9 @@ show_annual_summary_button.pack()
 add_tenants_button = tk.Button(root, text="Add Tenants", command=add_tenants, width=30, height=2)
 add_tenants_button.pack()
 
-# Create a button to edit tenants (placed below the add tenants button)
+# Create a button to edit or remove tenants (placed below the add tenants button)
 edit_tenants_button = tk.Button(root, text="Edit Tenants", command=edit_tenants, width=30, height=2)
 edit_tenants_button.pack()
-
-# Create a button to remove tenants (placed below the edit tenants button)
-remove_tenants_button = tk.Button(root, text="Remove Tenants", command=remove_tenants, width=30, height=2)
-remove_tenants_button.pack()
 
 # Create a button to display the monthly financial summary
 show_summary_button = tk.Button(root, text="Show Monthly Financial Summary", command=show_monthly_summary, width=30, height=2)
