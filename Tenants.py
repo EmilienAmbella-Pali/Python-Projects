@@ -4,11 +4,11 @@ from tkinter import simpledialog, messagebox
 
 # Define the rent for each tenant in a dictionary
 tenant_rents = {
-    "Tenant_1": 450,
-    "Tenant_2": 450,
-    "Tenant_3": 600,
-    "Tenant_4": 1000,
-    "Tenant_5": 400,
+    "Tenant_1": {"rent": 450, "payment_day": 24},
+    "Tenant_2": {"rent": 450, "payment_day": 15},
+    "Tenant_3": {"rent": 600, "payment_day": 5},
+    "Tenant_4": {"rent": 1000, "payment_day": 15},
+    "Tenant_5": {"rent": 400, "payment_day": 15},
 }
 
 # Define a dictionary to store monthly expenses
@@ -30,7 +30,7 @@ def calculate_accumulated_savings():
     accumulated_savings = 0
     total_expenses_up_to_month = 0
     for month in range(1, current_month + 1):
-        total_income_month = sum(tenant_rents.get(tenant, 0) for tenants in payment_schedule.values() for tenant in tenants)
+        total_income_month = sum(tenant_rents[tenant]["rent"] for tenants in payment_schedule.values() for tenant in tenants)
         total_expenses_month = sum(monthly_expenses[expense] for expense in monthly_expenses)
         accumulated_savings += total_income_month + total_expenses_month
         total_expenses_up_to_month += total_expenses_month
@@ -58,8 +58,10 @@ def add_tenants():
     if tenant_name:
         rent = simpledialog.askinteger("Add Tenant", f"Enter the monthly rent for {tenant_name}:")
         if rent is not None:
-            tenant_rents[tenant_name] = rent
-            update_savings()
+            payment_day = simpledialog.askinteger("Add Tenant", f"Enter the payment day for {tenant_name} (1-31):")
+            if 1 <= payment_day <= 31:
+                tenant_rents[tenant_name] = {"rent": rent, "payment_day": payment_day}
+                update_savings()
 
 # Function to edit or remove tenants
 def edit_tenants():
@@ -70,10 +72,14 @@ def edit_tenants():
                                                          "2. Delete Tenant\n")
         if action == "1":
             new_rent = simpledialog.askinteger("Edit Tenant", f"Enter the new monthly rent for {tenant_name}:",
-                                               initialvalue=tenant_rents[tenant_name])
+                                               initialvalue=tenant_rents[tenant_name]["rent"])
             if new_rent is not None:
-                tenant_rents[tenant_name] = new_rent
-                update_savings()
+                new_payment_day = simpledialog.askinteger("Edit Tenant", f"Enter the new payment day for {tenant_name} (1-31):",
+                                                          initialvalue=tenant_rents[tenant_name]["payment_day"])
+                if 1 <= new_payment_day <= 31:
+                    tenant_rents[tenant_name]["rent"] = new_rent
+                    tenant_rents[tenant_name]["payment_day"] = new_payment_day
+                    update_savings()
         elif action == "2":
             confirm = messagebox.askyesno("Confirm Deletion", f"Are you sure you want to delete {tenant_name}?")
             if confirm:
@@ -105,9 +111,9 @@ def show_monthly_summary():
     # Monthly Income
     financial_summary += "Monthly Income:\n"
     total_monthly_income = 0
-    for tenant, rent in tenant_rents.items():
-        financial_summary += f"{tenant}: £{rent}\n"
-        total_monthly_income += rent
+    for tenant, data in tenant_rents.items():
+        financial_summary += f"{tenant}: £{data['rent']} (Due on {data['payment_day']}th)\n"
+        total_monthly_income += data["rent"]
 
     financial_summary += f"Total Income: £{total_monthly_income}\n\n"
 
@@ -158,7 +164,7 @@ savings_up_to_date = 0  # Define savings as a global variable
 for payment_month, tenants in payment_schedule.items():
     if current_month >= payment_month:
         for tenant in tenants:
-            total_income += tenant_rents.get(tenant, 0)
+            total_income += tenant_rents[tenant]["rent"]
 
 # Calculate accumulated savings
 accumulated_savings, _ = calculate_accumulated_savings()
