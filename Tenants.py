@@ -2,178 +2,141 @@ import datetime
 import tkinter as tk
 from tkinter import simpledialog, messagebox
 
-# Define the rent for each tenant in a dictionary
-tenant_rents = {
-    "Tenant_1": {"rent": 450, "payment_day": 24},
-    "Tenant_2": {"rent": 450, "payment_day": 15},
-    "Tenant_3": {"rent": 600, "payment_day": 5},
-    "Tenant_4": {"rent": 1000, "payment_day": 15},
-    "Tenant_5": {"rent": 400, "payment_day": 15},
-}
+class PropertyManagementApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Property Management App")
+        self.tenant_rents = {
+            "Tenant_1": {"rent": 450, "payment_day": 24},
+            "Tenant_2": {"rent": 450, "payment_day": 15},
+            "Tenant_3": {"rent": 600, "payment_day": 5},
+            "Tenant_4": {"rent": 1000, "payment_day": 15},
+            "Tenant_5": {"rent": 400, "payment_day": 15},
+        }
+        self.monthly_expenses = {
+            "gas": -150,
+            "electricity": -200,
+            "council_tax": -150,
+            "wifi": -30,
+            "miscellaneous": 0
+        }
+        self.payment_schedule = {
+            1: ["Tenant_3", "Tenant_5"],
+            2: ["Tenant_2", "Tenant_4", "Tenant_1"]
+        }
 
-# Define a dictionary to store monthly expenses
-monthly_expenses = {
-    "gas": -150,
-    "electricity": -200,
-    "council_tax": -150,
-    "wifi": -30,
-    "miscellaneous": 0
-}
+        self.current_month = datetime.datetime.now().month
+        self.total_income = 0
+        self.total_expenses = 0
+        self.savings_up_to_date = 0
 
-# Create a dictionary to map payment months to tenant names
-payment_schedule = {
-    1: ["Tenant_3", "Tenant_5"],
-    2: ["Tenant_2", "Tenant_4", "Tenant_1"]
-}
+        self.create_buttons()
 
-def calculate_accumulated_savings():
-    accumulated_savings = 0
-    total_expenses_up_to_month = 0
-    for month in range(1, current_month + 1):
-        total_income_month = sum(tenant_rents[tenant]["rent"] for tenants in payment_schedule.values() for tenant in tenants)
-        total_expenses_month = sum(monthly_expenses[expense] for expense in monthly_expenses)
-        accumulated_savings += total_income_month + total_expenses_month
-        total_expenses_up_to_month += total_expenses_month
-    return accumulated_savings, total_expenses_up_to_month
+    def create_buttons(self):
+        miscellaneous_expenses_button = tk.Button(self.root, text="Enter Miscellaneous Expenses", command=self.get_miscellaneous_expenses, width=30, height=2)
+        miscellaneous_expenses_button.pack()
 
-# Function to get miscellaneous expenses from the user
-def get_miscellaneous_expenses():
-    try:
-        amount = simpledialog.askfloat("Miscellaneous Expenses", "Enter miscellaneous expenses for the month:")
-        monthly_expenses["miscellaneous"] = -amount
-        update_savings()
-    except ValueError:
-        messagebox.showerror("Error", "Please enter a valid number for miscellaneous expenses.")
+        show_annual_summary_button = tk.Button(self.root, text="Show Annual Financial Summary", command=self.show_annual_summary, width=30, height=2)
+        show_annual_summary_button.pack()
 
-# Function to create a new window with a larger text font
-def create_summary_window(title, content, font_size):
-    summary_window = tk.Toplevel(root)
-    summary_window.title(title)
-    label = tk.Label(summary_window, text=content, font=("Helvetica", font_size))
-    label.pack()
+        create_edit_tenants_button = tk.Button(self.root, text="Create/Edit Tenants", command=self.create_edit_tenants, width=30, height=2)
+        create_edit_tenants_button.pack()
 
-# Function to add tenants
-def add_tenants():
-    tenant_name = simpledialog.askstring("Add Tenant", "Enter the name of the new tenant:")
-    if tenant_name:
-        rent = simpledialog.askinteger("Add Tenant", f"Enter the monthly rent for {tenant_name}:")
-        if rent is not None:
-            payment_day = simpledialog.askinteger("Add Tenant", f"Enter the payment day for {tenant_name} (1-31):")
-            if 1 <= payment_day <= 31:
-                tenant_rents[tenant_name] = {"rent": rent, "payment_day": payment_day}
-                update_savings()
+        show_summary_button = tk.Button(self.root, text="Show Monthly Financial Summary", command=self.show_monthly_summary, width=30, height=2)
+        show_summary_button.pack()
 
-# Function to edit or remove tenants
-def edit_tenants():
-    tenant_name = simpledialog.askstring("Edit Tenant", "Enter the name of the tenant to edit:")
-    if tenant_name in tenant_rents:
-        action = simpledialog.askstring("Edit Tenant", f"Select action for {tenant_name}:\n\n"
-                                                         "1. Edit Tenant\n"
-                                                         "2. Delete Tenant\n")
+        self.show_savings = tk.StringVar()
+        self.show_savings.set(f"Accumulated Capital up to month {self.current_month}: £{self.calculate_accumulated_savings()[0]}")
+        savings_label = tk.Label(self.root, textvariable=self.show_savings)
+        savings_label.pack()
+
+    def calculate_accumulated_savings(self):
+        accumulated_savings = 0
+        total_expenses_up_to_month = 0
+        for month in range(1, self.current_month + 1):
+            total_income_month = sum(self.tenant_rents[tenant]["rent"] for tenants in self.payment_schedule.values() for tenant in tenants)
+            total_expenses_month = sum(self.monthly_expenses[expense] for expense in self.monthly_expenses)
+            accumulated_savings += total_income_month + total_expenses_month
+            total_expenses_up_to_month += total_expenses_month
+        return accumulated_savings, total_expenses_up_to_month
+
+    def get_miscellaneous_expenses(self):
+        try:
+            amount = simpledialog.askfloat("Miscellaneous Expenses", "Enter miscellaneous expenses for the month:")
+            self.monthly_expenses["miscellaneous"] = -amount
+            self.update_savings()
+        except ValueError:
+            messagebox.showerror("Error", "Please enter a valid number for miscellaneous expenses.")
+
+    def create_edit_tenants(self):
+        self.edit_window = tk.Toplevel(self.root)
+        self.edit_window.title("Tenant Details")
+
+        action = simpledialog.askstring("Tenants", "Select an action: \n1. Add New Tenant\n2. Edit Existing Tenant")
+
         if action == "1":
-            new_rent = simpledialog.askinteger("Edit Tenant", f"Enter the new monthly rent for {tenant_name}:",
-                                               initialvalue=tenant_rents[tenant_name]["rent"])
-            if new_rent is not None:
-                new_payment_day = simpledialog.askinteger("Edit Tenant", f"Enter the new payment day for {tenant_name} (1-31):",
-                                                          initialvalue=tenant_rents[tenant_name]["payment_day"])
-                if 1 <= new_payment_day <= 31:
-                    tenant_rents[tenant_name]["rent"] = new_rent
-                    tenant_rents[tenant_name]["payment_day"] = new_payment_day
-                    update_savings()
+            # Code to add a new tenant
+            tenant_name = simpledialog.askstring("Add Tenant", "Enter name of new tenant:")
+            tenant_rent = simpledialog.askinteger("Add Tenant", "Enter monthly rent:")
+            payment_day = simpledialog.askinteger("Add Tenant", "Enter payment day (1-31):")
+
+            self.tenant_rents[tenant_name] = {"rent": tenant_rent, "payment_day": payment_day}
+
         elif action == "2":
-            confirm = messagebox.askyesno("Confirm Deletion", f"Are you sure you want to delete {tenant_name}?")
-            if confirm:
-                del tenant_rents[tenant_name]
-                update_savings()
-    else:
-        messagebox.showerror("Error", f"Tenant '{tenant_name}' not found.")
+            # Code to edit an existing tenant
+            tenant_name = simpledialog.askstring("Edit Tenant", "Enter name of tenant to edit:")
 
-# Function to update the total expenses and savings
-def update_savings():
-    total_expenses = sum(monthly_expenses.values())
-    global savings_up_to_date  # Access the global savings variable
-    savings_up_to_date = total_income + total_expenses
-    show_savings.set(f"Accumulated Capital up to month {current_month}: £{savings_up_to_date}")
+            if tenant_name in self.tenant_rents:
+                new_rent = simpledialog.askinteger("Edit Rent", f"Enter new rent for {tenant_name}:", initialvalue=self.tenant_rents[tenant_name]["rent"])
+                new_payment_day = simpledialog.askinteger("Edit Payment Day", f"Enter new payment day for {tenant_name}:", initialvalue=self.tenant_rents[tenant_name]["payment_day"])
 
-# Function to display the annual financial summary
-def show_annual_summary():
-    accumulated_savings, total_expenses_up_to_month = calculate_accumulated_savings()
+                self.tenant_rents[tenant_name]["rent"] = new_rent
+                self.tenant_rents[tenant_name]["payment_day"] = new_payment_day
 
-    # Display the annual summary
-    annual_summary = f"Accumulated Capital up to month {current_month}: £{accumulated_savings}\n"
-    annual_summary += f"Total Expenses up to month {current_month}: £{total_expenses_up_to_month}"
-    create_summary_window("Annual Financial Summary", annual_summary, 14)  # 14 is the font size
+        else:
+            messagebox.showerror("Error", "Invalid selection")
 
-# Function to display the monthly financial summary
-def show_monthly_summary():
-    financial_summary = f"Monthly Financial Summary for Month {current_month}:\n\n"
+        self.show_savings.set(f"Accumulated Capital up to month {self.current_month}: £{self.calculate_accumulated_savings()[0]}")
 
-    # Monthly Income
-    financial_summary += "Monthly Income:\n"
-    total_monthly_income = 0
-    for tenant, data in tenant_rents.items():
-        financial_summary += f"{tenant}: £{data['rent']} (Due on {data['payment_day']}th)\n"
-        total_monthly_income += data["rent"]
+    def update_savings(self):
+        total_expenses = sum(self.monthly_expenses.values())
+        self.savings_up_to_date = self.total_income + total_expenses
+        self.show_savings.set(f"Accumulated Capital up to month {self.current_month}: £{self.savings_up_to_date}")
 
-    financial_summary += f"Total Income: £{total_monthly_income}\n\n"
+    def show_annual_summary(self):
+        accumulated_savings, total_expenses_up_to_month = self.calculate_accumulated_savings()
+        annual_summary = f"Accumulated Capital up to month {self.current_month}: £{accumulated_savings}\n"
+        annual_summary += f"Total Expenses up to month {self.current_month}: £{total_expenses_up_to_month}"
+        self.create_summary_window("Annual Financial Summary", annual_summary, 14)
 
-    # Expenses
-    financial_summary += "Expenses:\n"
-    for expense, amount in monthly_expenses.items():
-        financial_summary += f"{expense}: £{amount}\n"
-    total_expenses_month = -sum(monthly_expenses.values())
-    financial_summary += f"Total Expenses: £{total_expenses_month}\n\n"
+    def show_monthly_summary(self):
+        financial_summary = f"Monthly Financial Summary for Month {self.current_month}:\n\n"
+        financial_summary += "Monthly Income:\n"
+        total_monthly_income = 0
+        for tenant, data in self.tenant_rents.items():
+            financial_summary += f"{tenant}: £{data['rent']} (Due on {data['payment_day']}th)\n"
+            total_monthly_income += data["rent"]
 
-    financial_summary += f"Savings for month {current_month}: £{savings_up_to_date}"
+        financial_summary += f"Total Income: £{total_monthly_income}\n\n"
+        financial_summary += "Expenses:\n"
+        for expense, amount in self.monthly_expenses.items():
+            financial_summary += f"{expense}: £{amount}\n"
+        total_expenses_month = -sum(self.monthly_expenses.values())
+        financial_summary += f"Total Expenses: £{total_expenses_month}\n\n"
+        financial_summary += f"Savings for month {self.current_month}: £{self.savings_up_to_date}"
 
-    create_summary_window("Monthly Financial Summary", financial_summary, 14)  # 14 is the font size
+        self.create_summary_window("Monthly Financial Summary", financial_summary, 14)
 
-# Initialize the GUI window
-root = tk.Tk()
-root.title("Property Management App")
+    def create_summary_window(self, title, content, font_size):
+        summary_window = tk.Toplevel(self.root)
+        summary_window.title(title)
+        label = tk.Label(summary_window, text=content, font=("Helvetica", font_size))
+        label.pack()
 
-# Create a button to input miscellaneous expenses
-miscellaneous_expenses_button = tk.Button(root, text="Enter Miscellaneous Expenses", command=get_miscellaneous_expenses, width=30, height=2)
-miscellaneous_expenses_button.pack()
+def main():
+    root = tk.Tk()
+    app = PropertyManagementApp(root)
+    root.mainloop()
 
-# Create a button to display the annual financial summary
-show_annual_summary_button = tk.Button(root, text="Show Annual Financial Summary", command=show_annual_summary, width=30, height=2)
-show_annual_summary_button.pack()
-
-# Create a button to add tenants (placed below the annual summary button)
-add_tenants_button = tk.Button(root, text="Add Tenants", command=add_tenants, width=30, height=2)
-add_tenants_button.pack()
-
-# Create a button to edit or remove tenants (placed below the add tenants button)
-edit_tenants_button = tk.Button(root, text="Edit Tenants", command=edit_tenants, width=30, height=2)
-edit_tenants_button.pack()
-
-# Create a button to display the monthly financial summary
-show_summary_button = tk.Button(root, text="Show Monthly Financial Summary", command=show_monthly_summary, width=30, height=2)
-show_summary_button.pack()
-
-# Get the current month
-current_month = datetime.datetime.now().month
-
-# Initialize variables for total income and expenses
-total_income = 0
-total_expenses = 0
-savings_up_to_date = 0  # Define savings as a global variable
-
-# Calculate the total income based on the current month and payment schedule
-for payment_month, tenants in payment_schedule.items():
-    if current_month >= payment_month:
-        for tenant in tenants:
-            total_income += tenant_rents[tenant]["rent"]
-
-# Calculate accumulated savings
-accumulated_savings, _ = calculate_accumulated_savings()
-
-# Create a label to display savings
-show_savings = tk.StringVar()
-show_savings.set(f"Accumulated Capital up to month {current_month}: £{accumulated_savings}")
-savings_label = tk.Label(root, textvariable=show_savings)
-savings_label.pack()
-
-# Run the GUI application
-root.mainloop()
+if __name__ == "__main__":
+    main()
