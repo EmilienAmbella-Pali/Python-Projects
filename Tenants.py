@@ -1,17 +1,18 @@
 import datetime
 import tkinter as tk
 from tkinter import simpledialog, messagebox
+import re  # Import regular expression module
 
 class PropertyManagementApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Property Management App")
         self.tenant_rents = {
-            "Tenant_1": {"rent": 450, "payment_day": 24},
-            "Tenant_2": {"rent": 450, "payment_day": 15},
-            "Tenant_3": {"rent": 600, "payment_day": 5},
-            "Tenant_4": {"rent": 1000, "payment_day": 15},
-            "Tenant_5": {"rent": 400, "payment_day": 15},
+            "Tenant_1": {"rent": 450, "payment_day": 24, "email": "", "phone": ""},
+            "Tenant_2": {"rent": 450, "payment_day": 15, "email": "", "phone": ""},
+            "Tenant_3": {"rent": 600, "payment_day": 5, "email": "", "phone": ""},
+            "Tenant_4": {"rent": 1000, "payment_day": 15, "email": "", "phone": ""},
+            "Tenant_5": {"rent": 400, "payment_day": 15, "email": "", "phone": ""},
         }
         self.monthly_expenses = {
             "gas": -150,
@@ -75,27 +76,56 @@ class PropertyManagementApp:
         action = simpledialog.askstring("Tenants", "Select an action: \n1. Add New Tenant\n2. Edit Existing Tenant")
 
         if action == "1":
-            # Code to add a new tenant
-            tenant_name = simpledialog.askstring("Add Tenant", "Enter name of new tenant:")
-            tenant_rent = simpledialog.askinteger("Add Tenant", "Enter monthly rent:")
-            payment_day = simpledialog.askinteger("Add Tenant", "Enter payment day (1-31):")
+            label_texts = ["Tenant name:", "Monthly rent:", "Date of payment:", "Email address:", "Phone number:"]
+            for i, text in enumerate(label_texts, start=1):
+                label = tk.Label(self.edit_window, text=text)
+                label.grid(row=i, column=0, padx=5, pady=5)
+                entry = tk.Entry(self.edit_window)
+                entry.grid(row=i, column=1, padx=5, pady=5)
 
-            self.tenant_rents[tenant_name] = {"rent": tenant_rent, "payment_day": payment_day}
+            save_button = tk.Button(self.edit_window, text="Save Details", command=self.save_tenant_details)
+            save_button.grid(row=6, column=0, columnspan=2, pady=10)
 
         elif action == "2":
-            # Code to edit an existing tenant
-            tenant_name = simpledialog.askstring("Edit Tenant", "Enter name of tenant to edit:")
-
-            if tenant_name in self.tenant_rents:
-                new_rent = simpledialog.askinteger("Edit Rent", f"Enter new rent for {tenant_name}:", initialvalue=self.tenant_rents[tenant_name]["rent"])
-                new_payment_day = simpledialog.askinteger("Edit Payment Day", f"Enter new payment day for {tenant_name}:", initialvalue=self.tenant_rents[tenant_name]["payment_day"])
-
-                self.tenant_rents[tenant_name]["rent"] = new_rent
-                self.tenant_rents[tenant_name]["payment_day"] = new_payment_day
+            self.create_table()
 
         else:
             messagebox.showerror("Error", "Invalid selection")
 
+    def create_table(self):
+        label_texts = ["Tenant name:", "Monthly rent:", "Date of payment:", "Email address:", "Phone number:"]
+        for i, text in enumerate(label_texts, start=1):
+            label = tk.Label(self.edit_window, text=text)
+            label.grid(row=i, column=0, padx=5, pady=5)
+            entry = tk.Entry(self.edit_window)
+            entry.grid(row=i, column=1, padx=5, pady=5)
+
+        save_button = tk.Button(self.edit_window, text="Save Details", command=self.save_tenant_details)
+        save_button.grid(row=6, column=0, columnspan=2, pady=10)
+
+    def save_tenant_details(self):
+        new_tenant_details = {}
+        label_texts = ["Tenant name:", "Monthly rent:", "Date of payment:", "Email address:", "Phone number:"]
+        for i, (key, text) in enumerate(zip(new_tenant_details, label_texts), start=1):
+            entry = self.edit_window.grid_slaves(row=i, column=1)[0]
+            if key == "rent" or key == "payment_day":
+                value = int(entry.get()) if entry.get().isdigit() else 0
+            else:
+                value = entry.get()
+                if key == "Email address:" and value:
+                    if not re.match(r"[a-zA-Z0-9_.+-]+@gmail\.com", value):
+                        messagebox.showerror("Error", "Please enter a valid Gmail address.")
+                        return
+            new_tenant_details[key] = value
+
+        tenant_name = new_tenant_details.get("Tenant name:")
+        if tenant_name and tenant_name not in self.tenant_rents:
+            self.tenant_rents[tenant_name] = new_tenant_details
+        else:
+            messagebox.showerror("Error", "Tenant name already exists or is invalid.")
+
+        self.edit_window.destroy()
+        self.update_savings()
         self.show_savings.set(f"Accumulated Capital up to month {self.current_month}: £{self.calculate_accumulated_savings()[0]}")
 
     def update_savings(self):
