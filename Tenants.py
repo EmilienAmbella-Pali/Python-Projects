@@ -1,11 +1,124 @@
 import datetime
 import tkinter as tk
 from tkinter import simpledialog, messagebox
-import re  # Import regular expression module
+import hashlib
+import csv
+import os
+import re
 
-class PropertyManagementApp:
+class Property:
+    def __init__(self, name):
+        self.name = name
+        self.tenant_rents = {}
+        self.monthly_expenses = {}
+
+class LoginWindow:
     def __init__(self, root):
         self.root = root
+        self.root.title("Login")
+        self.username = ""
+        self.password = ""
+        self.users = {}
+        self.properties = {}
+        self.selected_property = None
+
+        self.load_users()
+
+        self.login_label = tk.Label(root, text="Please enter username and password")
+        self.login_label.pack()
+
+        self.username_label = tk.Label(root, text="Username:")
+        self.username_label.pack()
+        self.username_entry = tk.Entry(root)
+        self.username_entry.pack()
+
+        self.password_label = tk.Label(root, text="Password:")
+        self.password_label.pack()
+        self.password_entry = tk.Entry(root, show="*")
+        self.password_entry.pack()
+
+        self.login_button = tk.Button(root, text="Login", command=self.authenticate)
+        self.login_button.pack()
+
+    def load_users(self):
+        if not os.path.exists('users.csv'):
+            with open('users.csv', 'w'):
+                pass
+        else:
+            with open('users.csv', mode='r') as file:
+                reader = csv.reader(file)
+                for row in reader:
+                    self.users[row[0]] = row[1]
+
+    def save_users(self):
+        with open('users.csv', mode='w', newline='') as file:
+            writer = csv.writer(file)
+            for username, password in self.users.items():
+                writer.writerow([username, password])
+
+    def authenticate(self):
+        self.username = self.username_entry.get()
+        self.password = self.password_entry.get()
+
+        if self.username in self.users and self.check_password(self.password, self.users[self.username]):
+            self.root.destroy()
+            self.property_selection()
+        else:
+            messagebox.showerror("Login Failed", "Invalid username or password")
+
+    def hash_password(self, password):
+        return hashlib.sha256(password.encode()).hexdigest()
+
+    def check_password(self, input_password, stored_password):
+        return self.hash_password(input_password) == stored_password
+
+    def property_selection(self):
+        self.property_window = tk.Tk()
+        self.property_window.title("Select Property")
+
+        property_label = tk.Label(self.property_window, text="Select Property:")
+        property_label.pack()
+
+        for property_name in self.properties:
+            property_button = tk.Button(self.property_window, text=property_name, command=lambda name=property_name: self.select_property(name))
+            property_button.pack()
+
+        add_property_button = tk.Button(self.property_window, text="Add Property", command=self.add_property)
+        add_property_button.pack()
+
+        self.property_window.mainloop()
+
+    def select_property(self, property_name):
+        self.selected_property = self.properties[property_name]
+        self.launch_app_for_property()
+
+    def launch_app_for_property(self):
+        property_window = tk.Toplevel()
+        property_window.title("Property Management")
+        app = PropertyManagementApp(property_window, self.selected_property, self.username)
+
+    def add_property(self):
+        new_property_name = simpledialog.askstring("Add Property", "Enter Property Name:")
+        if new_property_name:
+            self.properties[new_property_name] = Property(new_property_name)
+            messagebox.showinfo("Property Added", f"Property '{new_property_name}' added successfully.")
+            self.property_window.destroy()  # Close the property selection window
+            self.property_selection()  # Reopen the property selection window with updated properties
+        else:
+            messagebox.showerror("Error", "Property name cannot be empty.")
+            
+            # Close the property selection window
+            self.property_window.destroy()
+            
+            # Reopen the property selection window with updated properties
+            self.property_selection()
+
+
+class PropertyManagementApp:
+    def __init__(self, root, selected_property, username):
+        self.root = root
+        self.selected_property = selected_property
+        self.username = username
         self.root.title("Property Management App")
         self.tenant_rents = {
             "Tenant_1": {"rent": 450, "payment_day": 24, "email": "", "phone": ""},
@@ -33,6 +146,8 @@ class PropertyManagementApp:
 
         self.create_buttons()
 
+    
+    
     def create_buttons(self):
         miscellaneous_expenses_button = tk.Button(self.root, text="Enter Miscellaneous Expenses", command=self.get_miscellaneous_expenses, width=30, height=2)
         miscellaneous_expenses_button.pack()
@@ -50,6 +165,16 @@ class PropertyManagementApp:
         self.show_savings.set(f"Accumulated Capital up to month {self.current_month}: £{self.calculate_accumulated_savings()[0]}")
         savings_label = tk.Label(self.root, textvariable=self.show_savings)
         savings_label.pack()
+
+        maintenance_button = tk.Button(self.root, text="Maintenance", command=self.manage_maintenance)
+        maintenance_button.pack()
+
+        communication_button = tk.Button(self.root, text="Communication", command=self.manage_communication)
+        communication_button.pack()
+
+        property_details_button = tk.Button(self.root, text="Property Details", command=self.view_property_details)
+        property_details_button.pack()
+
 
     def calculate_accumulated_savings(self):
         accumulated_savings = 0
@@ -163,9 +288,76 @@ class PropertyManagementApp:
         label = tk.Label(summary_window, text=content, font=("Helvetica", font_size))
         label.pack()
 
+    def manage_tenants(self):
+        # Logic to manage tenants: Sample implementation to add a new tenant
+        tenant_name = simpledialog.askstring("Tenant Details", "Enter Tenant Name:")
+        if tenant_name:
+            rent = simpledialog.askfloat("Tenant Details", f"Enter Monthly Rent for {tenant_name}:")
+            payment_day = simpledialog.askinteger("Tenant Details", f"Enter Payment Day for {tenant_name} (1-31):")
+            email = simpledialog.askstring("Tenant Details", f"Enter Email Address for {tenant_name}:")
+            phone = simpledialog.askstring("Tenant Details", f"Enter Phone Number for {tenant_name}:")
+
+            self.selected_property.tenant_rents[tenant_name] = {
+                "rent": rent,
+                "payment_day": payment_day,
+                "email": email,
+                "phone": phone
+            }
+            messagebox.showinfo("Tenant Added", f"Tenant '{tenant_name}' added successfully.")
+        else:
+            messagebox.showerror("Error", "Tenant name cannot be empty.")
+
+    def manage_finances(self):
+        # Logic to manage finances: Sample implementation to add monthly expenses
+        expense_type = simpledialog.askstring("Monthly Expenses", "Enter Expense Type:")
+        if expense_type:
+            amount = simpledialog.askfloat("Monthly Expenses", f"Enter Amount for {expense_type}:")
+            self.selected_property.monthly_expenses[expense_type] = -amount
+            messagebox.showinfo("Expense Added", f"Expense '{expense_type}' added successfully.")
+        else:
+            messagebox.showerror("Error", "Expense type cannot be empty.")
+
+    def manage_maintenance(self):
+        # Logic to manage maintenance: Sample implementation to track maintenance issues
+        issue = simpledialog.askstring("Maintenance", "Enter Maintenance Issue:")
+        if issue:
+            # Logic to handle the maintenance issue
+            messagebox.showinfo("Maintenance Recorded", f"Maintenance issue '{issue}' recorded.")
+        else:
+            messagebox.showerror("Error", "Please enter a maintenance issue.")
+
+    def manage_communication(self):
+        # Logic to manage communication: Sample implementation to send notifications
+        message = simpledialog.askstring("Communication", "Enter Message to Tenants:")
+        if message:
+            # Logic to send the message to tenants
+            messagebox.showinfo("Message Sent", "Message sent to all tenants.")
+        else:
+            messagebox.showerror("Error", "Message cannot be empty.")
+
+    def view_property_details(self):
+        # Logic to view property details: Sample implementation to display property information
+        details = f"Property Name: {self.selected_property.name}\n"
+        details += "Tenant Rents:\n"
+        for tenant, data in self.selected_property.tenant_rents.items():
+            details += f"{tenant}: Rent £{data['rent']} due on {data['payment_day']}th\n"
+        details += "Monthly Expenses:\n"
+        for expense, amount in self.selected_property.monthly_expenses.items():
+            details += f"{expense}: £{amount}\n"
+
+        messagebox.showinfo("Property Details", details)
+
+    # Implement other functionalities as needed for property management
+
+    def change_property(self):
+        self.root.destroy()
+        root = tk.Tk()
+        login = LoginWindow(root)
+        root.mainloop()
+
 def main():
     root = tk.Tk()
-    app = PropertyManagementApp(root)
+    login = LoginWindow(root)
     root.mainloop()
 
 if __name__ == "__main__":
