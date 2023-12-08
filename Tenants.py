@@ -113,6 +113,38 @@ class LoginWindow:
             # Reopen the property selection window with updated properties
             self.property_selection()
 
+    def save_properties(self):
+        with open('properties.csv', mode='w', newline='') as file:
+            writer = csv.writer(file)
+            for property_name, property_obj in self.properties.items():
+                # Save property details: property name
+                writer.writerow([property_name])
+
+                # Save tenant details for the property
+                for tenant, tenant_data in property_obj.tenant_rents.items():
+                    writer.writerow([property_name, tenant, tenant_data['rent'], tenant_data['payment_day'], tenant_data['email'], tenant_data['phone']])
+
+
+    def load_properties(self):
+        if not os.path.exists('properties.csv'):
+            return
+
+        with open('properties.csv', mode='r') as file:
+           reader = csv.reader(file)
+           current_property = None
+           for row in reader:
+               if len(row) == 1:  # New property entry
+                   current_property = row[0]
+                   self.properties[current_property] = Property(current_property)
+               elif len(row) == 6:  # Tenant details for the property
+                  property_name, tenant, rent, payment_day, email, phone = row
+                  if property_name in self.properties:
+                      self.properties[property_name].tenant_rents[tenant] = {
+                          'rent': int(rent),
+                          'payment_day': int(payment_day),
+                          'email': email,
+                          'phone': phone
+                      }
 
 class PropertyManagementApp:
     def __init__(self, root, selected_property, username):
@@ -212,10 +244,52 @@ class PropertyManagementApp:
             save_button.grid(row=6, column=0, columnspan=2, pady=10)
 
         elif action == "2":
-            self.create_table()
+           tenant_name_to_edit = simpledialog.askstring("Edit Tenant", "Enter the name of the tenant to edit:")
+           if tenant_name_to_edit in self.tenant_rents:
+               self.edit_tenant_details(tenant_name_to_edit)
+           else:
+               messagebox.showerror("Error", f"Tenant '{tenant_name_to_edit}' not found.")
 
         else:
-            messagebox.showerror("Error", "Invalid selection")
+           messagebox.showerror("Error", "Invalid selection")
+
+    def edit_tenant_details(self, tenant_name):
+        # Function to edit details of a specific tenant
+        tenant_details = self.tenant_rents[tenant_name]
+
+        label_texts = ["Monthly rent:", "Date of payment:", "Email address:", "Phone number:"]
+        entries = {}
+    
+        for i, (key, text) in enumerate(zip(tenant_details, label_texts), start=1):
+            label = tk.Label(self.edit_window, text=text)
+            label.grid(row=i, column=0, padx=5, pady=5)
+            entry = tk.Entry(self.edit_window)
+            entry.grid(row=i, column=1, padx=5, pady=5)
+            entry.insert(tk.END, str(tenant_details[key]))  # Fill the entry with existing data
+            entries[key] = entry
+
+        save_button = tk.Button(self.edit_window, text="Save Details", command=lambda: self.save_edited_tenant_details(tenant_name, entries))
+        save_button.grid(row=len(label_texts) + 1, column=0, columnspan=2, pady=10)
+
+    def save_edited_tenant_details(self, tenant_name, entries):
+        edited_details = {}
+        for key, entry in entries.items():
+            if key == "rent" or key == "payment_day":
+                value = int(entry.get()) if entry.get().isdigit() else 0
+            else:
+                value = entry.get()
+
+            edited_details[key] = value
+
+        # Update the tenant details with edited values
+        self.tenant_rents[tenant_name] = edited_details
+        messagebox.showinfo("Success", f"Details for '{tenant_name}' updated successfully.")
+        self.edit_window.destroy()
+        # Call function to update savings or perform other necessary actions
+        self.update_savings()
+        self.show_savings.set(f"Accumulated Capital up to month {self.current_month}: £{self.calculate_accumulated_savings()[0]}")    
+            
+        
 
     def create_table(self):
         label_texts = ["Tenant name:", "Monthly rent:", "Date of payment:", "Email address:", "Phone number:"]
@@ -231,17 +305,17 @@ class PropertyManagementApp:
     def save_tenant_details(self):
         new_tenant_details = {}
         label_texts = ["Tenant name:", "Monthly rent:", "Date of payment:", "Email address:", "Phone number:"]
-        for i, (key, text) in enumerate(zip(new_tenant_details, label_texts), start=1):
+        for i, (key, text) in enumerate(zip(label_texts, label_texts), start=1):
             entry = self.edit_window.grid_slaves(row=i, column=1)[0]
-            if key == "rent" or key == "payment_day":
+            if key == "Monthly rent:" or key == "Date of payment:":
                 value = int(entry.get()) if entry.get().isdigit() else 0
-            else:
-                value = entry.get()
-                if key == "Email address:" and value:
-                    if not re.match(r"[a-zA-Z0-9_.+-]+@gmail\.com", value):
-                        messagebox.showerror("Error", "Please enter a valid Gmail address.")
-                        return
-            new_tenant_details[key] = value
+        else:
+            value = entry.get()
+            if key == "Email address:" and value:
+                if not re.match(r"[a-zA-Z0-9_.+-]+@gmail\.com", value):
+                    messagebox.showerror("Error", "Please enter a valid Gmail address.")
+                    return
+        new_tenant_details[key] = value
 
         tenant_name = new_tenant_details.get("Tenant name:")
         if tenant_name and tenant_name not in self.tenant_rents:
