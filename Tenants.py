@@ -1,5 +1,243 @@
 import datetime
 import tkinter as tk
+from tkinter import ttk, simpledialog, messagebox
+import hashlib
+import csv
+import os
+
+class Property:
+    def __init__(self, name):
+        self.name = name
+        self.tenant_rents = {}
+        self.monthly_expenses = {}
+        self.maintenance_issues = []
+        
+    def add_tenant(self, tenant_name, rent):
+        self.tenant_rents[tenant_name] = rent
+        
+    def add_expense(self, expense_name, amount):
+        self.monthly_expenses[expense_name] = amount
+    
+    def add_maintenance_issue(self, issue):
+        self.maintenance_issues.append(issue)
+
+class PropertyManagementApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Property Management")
+        self.users = {}
+        self.properties = {}
+        self.selected_property = None
+        self.load_users()
+        self.load_properties()
+        self.create_login_screen()
+
+    def load_users(self):
+        if not os.path.exists('users.csv'):
+            with open('users.csv', 'w'):
+                pass
+        else:
+            with open('users.csv', mode='r') as file:
+                reader = csv.reader(file)
+                for row in reader:
+                    self.users[row[0]] = row[1]
+
+    def save_users(self):
+        with open('users.csv', mode='w', newline='') as file:
+            writer = csv.writer(file)
+            for username, password in self.users.items():
+                writer.writerow([username, password])
+
+    def hash_password(self, password):
+        return hashlib.sha256(password.encode()).hexdigest()
+
+    def load_properties(self):
+        if not os.path.exists('properties.csv'):
+            with open('properties.csv', 'w'):
+                pass
+        else:
+            with open('properties.csv', mode='r') as file:
+                reader = csv.reader(file)
+                for row in reader:
+                    property_name = row[0]
+                    self.properties[property_name] = Property(property_name)
+
+    def save_properties(self):
+        with open('properties.csv', mode='w', newline='') as file:
+            writer = csv.writer(file)
+            for property_name in self.properties:
+                writer.writerow([property_name])
+
+    def create_login_screen(self):
+        self.login_frame = ttk.Frame(self.root)
+        self.login_frame.pack(pady=20)
+
+        ttk.Label(self.login_frame, text="Username:").pack()
+        self.username_entry = ttk.Entry(self.login_frame)
+        self.username_entry.pack()
+
+        ttk.Label(self.login_frame, text="Password:").pack()
+        self.password_entry = ttk.Entry(self.login_frame, show="*")
+        self.password_entry.pack()
+
+        ttk.Button(self.login_frame, text="Login", command=self.authenticate).pack(pady=5)
+        ttk.Button(self.login_frame, text="Register", command=self.register_user).pack()
+
+    def authenticate(self):
+        username = self.username_entry.get()
+        password = self.hash_password(self.password_entry.get())
+        
+        if username in self.users and self.users[username] == password:
+            self.logged_in_user = username
+            self.login_frame.destroy()
+            self.create_main_interface()
+        else:
+            messagebox.showerror("Login Failed", "Invalid username or password")
+
+    def register_user(self):
+        username = simpledialog.askstring("Register", "Enter a new username:")
+        if username in self.users:
+            messagebox.showerror("Error", "Username already exists")
+            return
+        password = simpledialog.askstring("Register", "Enter a password:", show="*")
+        self.users[username] = self.hash_password(password)
+        self.save_users()
+        messagebox.showinfo("Success", "Registration successful! You can now log in.")
+
+    def create_main_interface(self):
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(expand=True, fill='both')
+        
+        self.create_dashboard_tab()
+        self.create_expenses_tab()
+        self.create_tenants_tab()
+        self.create_maintenance_tab()
+        self.create_communication_tab()
+        self.create_summary_tab()
+
+    def create_dashboard_tab(self):
+        frame = ttk.Frame(self.notebook)
+        self.notebook.add(frame, text="Dashboard")
+        ttk.Label(frame, text="Welcome to Property Management").pack()
+        
+        ttk.Button(frame, text="Add Property", command=self.add_property).pack()
+        ttk.Label(frame, text="Properties:").pack()
+        
+        self.property_listbox = tk.Listbox(frame)
+        self.property_listbox.pack()
+        
+        self.update_property_listbox()
+        
+        ttk.Button(frame, text="Select Property", command=self.select_property).pack()
+
+    def create_expenses_tab(self):
+        frame = ttk.Frame(self.notebook)
+        self.notebook.add(frame, text="Expenses")
+        
+        ttk.Button(frame, text="Enter Misc Expenses", command=self.get_miscellaneous_expenses).pack()
+
+    def create_tenants_tab(self):
+        frame = ttk.Frame(self.notebook)
+        self.notebook.add(frame, text="Tenants")
+        
+        ttk.Button(frame, text="Add Tenant", command=self.add_tenant).pack()
+
+    def create_maintenance_tab(self):
+        frame = ttk.Frame(self.notebook)
+        self.notebook.add(frame, text="Maintenance")
+        
+        ttk.Button(frame, text="Report Issue", command=self.manage_maintenance).pack()
+
+    def create_communication_tab(self):
+        frame = ttk.Frame(self.notebook)
+        self.notebook.add(frame, text="Communication")
+        
+        ttk.Button(frame, text="Send Message", command=self.manage_communication).pack()
+
+    def create_summary_tab(self):
+        frame = ttk.Frame(self.notebook)
+        self.notebook.add(frame, text="Summary")
+        
+        ttk.Button(frame, text="Annual Summary", command=self.show_annual_summary).pack()
+        ttk.Button(frame, text="Monthly Summary", command=self.show_monthly_summary).pack()
+
+    def add_property(self):
+        new_property_name = simpledialog.askstring("Add Property", "Enter Property Name:")
+        if new_property_name:
+            self.properties[new_property_name] = Property(new_property_name)
+            self.save_properties()
+            self.update_property_listbox()
+            messagebox.showinfo("Success", f"Property '{new_property_name}' added successfully.")
+
+    def update_property_listbox(self):
+        self.property_listbox.delete(0, tk.END)
+        for property_name in self.properties:
+            self.property_listbox.insert(tk.END, property_name)
+
+    def select_property(self):
+        selected_index = self.property_listbox.curselection()
+        if selected_index:
+            self.selected_property = self.properties[self.property_listbox.get(selected_index)]
+            messagebox.showinfo("Property Selected", f"You have selected '{self.selected_property.name}'.")
+
+    def get_miscellaneous_expenses(self):
+        try:
+            amount = simpledialog.askfloat("Miscellaneous Expenses", "Enter miscellaneous expenses:")
+            if self.selected_property:
+                expense_name = simpledialog.askstring("Expense Name", "Enter expense description:")
+                self.selected_property.add_expense(expense_name, amount)
+                messagebox.showinfo("Success", f"Expense '{expense_name}' of £{amount} recorded for property '{self.selected_property.name}'.")
+            else:
+                messagebox.showerror("Error", "Please select a property first.")
+        except ValueError:
+            messagebox.showerror("Error", "Enter a valid number.")
+
+    def add_tenant(self):
+        if self.selected_property:
+            tenant_name = simpledialog.askstring("Add Tenant", "Enter Tenant Name:")
+            rent = simpledialog.askfloat("Tenant Rent", "Enter Tenant Rent (£):")
+            if tenant_name and rent:
+                self.selected_property.add_tenant(tenant_name, rent)
+                messagebox.showinfo("Tenant Added", f"Tenant '{tenant_name}' with rent of £{rent} added to '{self.selected_property.name}'.")
+        else:
+            messagebox.showerror("Error", "Please select a property first.")
+
+    def manage_maintenance(self):
+        if self.selected_property:
+            issue = simpledialog.askstring("Maintenance", "Enter Issue:")
+            if issue:
+                self.selected_property.add_maintenance_issue(issue)
+                messagebox.showinfo("Recorded", f"Issue '{issue}' recorded for '{self.selected_property.name}'.")
+        else:
+            messagebox.showerror("Error", "Please select a property first.")
+
+    def manage_communication(self):
+        message = simpledialog.askstring("Communication", "Enter Message:")
+        if message:
+            messagebox.showinfo("Sent", "Message sent to tenants.")
+
+    def show_annual_summary(self):
+        if self.selected_property:
+            annual_expenses = sum(self.selected_property.monthly_expenses.values())
+            total_rent = sum(self.selected_property.tenant_rents.values()) * 12
+            messagebox.showinfo("Annual Summary", f"Total Rent: £{total_rent}\nTotal Expenses: £{annual_expenses}")
+        else:
+            messagebox.showerror("Error", "Please select a property first.")
+
+    def show_monthly_summary(self):
+        if self.selected_property:
+            monthly_expenses = sum(self.selected_property.monthly_expenses.values())
+            total_rent = sum(self.selected_property.tenant_rents.values())
+            messagebox.showinfo("Monthly Summary", f"Total Rent: £{total_rent}\nTotal Expenses: £{monthly_expenses}")
+        else:
+            messagebox.showerror("Error", "Please select a property first.")
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = PropertyManagementApp(root)
+    root.mainloop()
+import datetime
+import tkinter as tk
 from tkinter import simpledialog, messagebox
 import hashlib
 import csv
