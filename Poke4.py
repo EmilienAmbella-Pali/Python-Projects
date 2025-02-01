@@ -1,26 +1,15 @@
-# Poke The Dots Version 4
-# This is a graphical game where two dots move around
-# the screen, bouncing off the edges. The user tries 
-# to prevent the dots from colliding by pressing and 
-# releasing the mouse button to teleport the dots to 
-# a random location. The score is the number of seconds 
-# from the start of the game.
-
-from uagame import Window
+import pygame
 from random import randint
-from pygame import QUIT, Color, MOUSEBUTTONUP
-from pygame.time import Clock, get_ticks
-from pygame.event import get as get_events
-from pygame.draw import circle as draw_circle
+from pygame import QUIT, MOUSEBUTTONUP
+from pygame.time import get_ticks
+import math
 
 # User-defined functions
-
 def main():
     game = Game()
     game.play()
-    
-# User-defined classes
 
+# User-defined classes
 class Game:
     # An object in this class represents a complete game.
 
@@ -28,44 +17,40 @@ class Game:
         # Initialize a Game.
         # - self is the Game to initialize
         
-        self._window = Window('Poke the Dots', 500, 400)
-        self._adjust_window()
+        pygame.init()
+        self._window = pygame.display.set_mode((500, 400))
+        pygame.display.set_caption('Poke the Dots')
         self._frame_rate = 90  # larger is faster game
         self._close_selected = False
-        self._clock = Clock()
-        self._small_dot = Dot('red', [50,75], 30, [1,2], self._window)
-        self._big_dot = Dot('blue', [200,100], 40, [2,1], self._window)
+        self._game_over = False
+        self._clock = pygame.time.Clock()
+        self._small_dot = Dot('red', [50, 75], 30, [1, 2], self._window)
+        self._big_dot = Dot('blue', [200, 100], 40, [2, 1], self._window)
         self._small_dot.randomize()
         self._big_dot.randomize()
         self._score = 0
+        self._font = pygame.font.SysFont('Arial', 64)
         
-    def _adjust_window(self):
-        # Adjust the window for the game.
-        # - self is the Game to adjust the window for
-        
-        self._window.set_font_name('ariel')
-        self._window.set_font_size(64)
-        self._window.set_font_color('white')
-        self._window.set_bg_color('black')
-    
     def play(self):
         # Play the game until the player presses the close icon
         # and then close the window.
         # - self is the Game to play
 
-        while not self._close_selected:
+        while not self._close_selected and not self._game_over:
             # play frame
             self.handle_events()
             self.draw()
             self.update()
-        self._window.close()
+        if self._game_over:
+            self.display_game_over()
+        pygame.quit()
            
     def handle_events(self):
         # Handle the current game events by changing the game
         # state appropriately.
         # - self is the Game whose events will be handled
 
-        event_list = get_events()
+        event_list = pygame.event.get()
         for event in event_list:
             self.handle_one_event(event)
             
@@ -93,11 +78,11 @@ class Game:
         # Draw all game objects.
         # - self is the Game to draw
         
-        self._window.clear()
+        self._window.fill((0, 0, 0))  # fill the window with black
         self.draw_score()
         self._small_dot.draw()
         self._big_dot.draw()
-        self._window.update()
+        pygame.display.update()
                         
     def update(self):
         # Update all game objects with state changes
@@ -108,24 +93,62 @@ class Game:
         self._big_dot.move()
         self._clock.tick(self._frame_rate)
         self._score = get_ticks() // 1000 
-                    
+
+        if self.check_collision():
+            self._game_over = True
+        self.increase_difficulty()
+
     def draw_score(self):
         # Draw the time since the game began as a score.
         # - self is the Game to draw for
         
-        string = 'Score: ' + str(self._score)
-        self._window.draw_string(string, 0, 0)
+        score_text = self._font.render(f'Score: {self._score}', True, (255, 255, 255))
+        self._window.blit(score_text, (0, 0))
+        
+    def check_collision(self):
+        # Check if the two dots collide.
+        # - self is the Game to check the collision for
+        
+        small_dot_center = self._small_dot.get_center()
+        big_dot_center = self._big_dot.get_center()
+        
+        # Calculate the distance between the centres of the dots
+        distance = math.sqrt((small_dot_center[0] - big_dot_center[0])**2 +
+                             (small_dot_center[1] - big_dot_center[1])**2)
+        
+        # Sum of the radii of both dots
+        radius_sum = self._small_dot.get_radius() + self._big_dot.get_radius()
+        
+        # If the distance is less than the sum of the radii, there is a collision
+        return distance < radius_sum
+    
+    def increase_difficulty(self):
+        # Increase the difficulty over time by gradually increasing the dot speeds.
+        # - self is the Game to increase the difficulty for
+        
+        if self._score % 10 == 0 and self._score > 0:  # Increase speed every 10 seconds
+            self._small_dot.increase_speed()
+            self._big_dot.increase_speed()
+
+    def display_game_over(self):
+        # Display the Game Over screen with the final score.
+        # - self is the Game to display the game over for
+        
+        self._window.fill((0, 0, 0))
+        game_over_text = self._font.render(f"Game Over! Final Score: {self._score}", True, (255, 255, 255))
+        self._window.blit(game_over_text, (100, 150))
+        pygame.display.update()
 
 class Dot:
-    # An object in this class represents a colored circle
+    # An object in this class represents a coloured circle
     # that can move.
 
     def __init__(self, color, center, radius, velocity, window):
         # Initialize a Dot.
         # - self is the Dot to initialize
-        # - color is the str color of the dot
+        # - color is the str colour of the dot
         # - center is a list containing the x and y int
-        # coords of the center of the dot
+        # coords of the centre of the dot
         # - radius is the int pixel radius of the dot
         # - velocity is a list containing the x and y components
         # - window is the game's Window
@@ -143,23 +166,21 @@ class Dot:
 
         size = (self._window.get_width(), self._window.get_height())
         for index in range(0, 2):
-            # update center at index
+            # update centre at index
             self._center[index] = self._center[index] + self._velocity[index]
             # dot perimeter outside window?
             if (self._center[index] < self._radius) or (self._center[index] + self._radius > size[index]):
                 # change direction
-                self._velocity[index] = - self._velocity[index]
+                self._velocity[index] = -self._velocity[index]
 
     def draw(self):
         # Draw the dot on the surface.
         # - self is the Dot
 
-        surface = self._window.get_surface()
-        color = Color(self._color)
-        draw_circle(surface, color, self._center, self._radius)
-    
+        pygame.draw.circle(self._window, pygame.Color(self._color), self._center, self._radius)
+
     def randomize(self):
-        # Change the dot so that its center is at a random
+        # Change the dot so that its centre is at a random
         # point on the surface. Ensure that no part of a dot
         # extends beyond the surface boundary.
         # - self is the Dot
@@ -167,5 +188,26 @@ class Dot:
         size = (self._window.get_width(), self._window.get_height())
         for index in range(0, 2):
             self._center[index] = randint(self._radius, size[index] - self._radius)
+    
+    def get_center(self):
+        # Get the current centre of the dot
+        return self._center
+    
+    def get_radius(self):
+        # Get the radius of the dot
+        return self._radius
+
+    def get_rect(self):
+        # Return a pygame Rect object representing the dot's area
+        # - self is the Dot
+
+        return pygame.Rect(self._center[0] - self._radius, self._center[1] - self._radius, self._radius * 2, self._radius * 2)
+
+    def increase_speed(self):
+        # Increase the dot's speed over time.
+        # - self is the Dot to increase speed for
+
+        self._velocity[0] += 1 if self._velocity[0] > 0 else -1
+        self._velocity[1] += 1 if self._velocity[1] > 0 else -1
 
 main()
