@@ -4,7 +4,101 @@ from tkinter import ttk, simpledialog, messagebox
 import hashlib
 import csv
 import os
+import tkinter as tk
+from tkinter import ttk, messagebox, simpledialog
 
+class PropertyManagementApp:
+    # ...existing code...
+
+    def create_tenants_tab(self):
+        frame = ttk.Frame(self.notebook)
+        self.notebook.add(frame, text="Tenants")
+
+        self.tenants_listbox = tk.Listbox(frame)
+        self.tenants_listbox.pack()
+
+        self.update_tenants_listbox()
+
+        ttk.Button(frame, text="Add Tenant", command=self.add_tenant).pack()
+        ttk.Button(frame, text="Edit Tenant", command=self.edit_selected_tenant).pack()
+        ttk.Button(frame, text="Delete Tenant", command=self.delete_selected_tenant).pack()
+
+    def update_tenants_listbox(self):
+        self.tenants_listbox.delete(0, tk.END)
+        for tenant in self.selected_property.tenant_rents:
+            self.tenants_listbox.insert(tk.END, tenant)
+
+    def edit_selected_tenant(self):
+        selected_index = self.tenants_listbox.curselection()
+        if selected_index:
+            tenant_name = self.tenants_listbox.get(selected_index)
+            self.edit_tenant(tenant_name)
+        else:
+            messagebox.showerror("Error", "Please select a tenant to edit.")
+
+    def delete_selected_tenant(self):
+        selected_index = self.tenants_listbox.curselection()
+        if selected_index:
+            tenant_name = self.tenants_listbox.get(selected_index)
+            del self.selected_property.tenant_rents[tenant_name]
+            self.update_tenants_listbox()
+            messagebox.showinfo("Success", f"Tenant '{tenant_name}' deleted successfully.")
+        else:
+            messagebox.showerror("Error", "Please select a tenant to delete.")
+
+    def create_expenses_tab(self):
+        frame = ttk.Frame(self.notebook)
+        self.notebook.add(frame, text="Expenses")
+
+        self.expenses_listbox = tk.Listbox(frame)
+        self.expenses_listbox.pack()
+
+        self.update_expenses_listbox()
+
+        ttk.Button(frame, text="Add Expense", command=self.get_miscellaneous_expenses).pack()
+        ttk.Button(frame, text="Edit Expense", command=self.edit_selected_expense).pack()
+        ttk.Button(frame, text="Delete Expense", command=self.delete_selected_expense).pack()
+
+    def update_expenses_listbox(self):
+        self.expenses_listbox.delete(0, tk.END)
+        for expense, amount in self.selected_property.monthly_expenses.items():
+            self.expenses_listbox.insert(tk.END, f"{expense}: £{amount}")
+
+    def edit_selected_expense(self):
+        selected_index = self.expenses_listbox.curselection()
+        if selected_index:
+            expense_name = self.expenses_listbox.get(selected_index).split(":")[0]
+            amount = simpledialog.askfloat("Edit Expense", f"Enter new amount for {expense_name}:")
+            if amount is not None:
+                self.selected_property.monthly_expenses[expense_name] = amount
+                self.update_expenses_listbox()
+                messagebox.showinfo("Success", f"Expense '{expense_name}' updated successfully.")
+        else:
+            messagebox.showerror("Error", "Please select an expense to edit.")
+
+    def delete_selected_expense(self):
+        selected_index = self.expenses_listbox.curselection()
+        if selected_index:
+            expense_name = self.expenses_listbox.get(selected_index).split(":")[0]
+            del self.selected_property.monthly_expenses[expense_name]
+            self.update_expenses_listbox()
+            messagebox.showinfo("Success", f"Expense '{expense_name}' deleted successfully.")
+        else:
+            messagebox.showerror("Error", "Please select an expense to delete.")
+
+    def create_maintenance_tab(self):
+        frame = ttk.Frame(self.notebook)
+        self.notebook.add(frame, text="Maintenance")
+        
+        ttk.Button(frame, text="Report Issue", command=self.manage_maintenance).pack()
+
+    def create_communication_tab(self):
+        frame = ttk.Frame(self.notebook)
+        self.notebook.add(frame, text="Communication")
+        
+        ttk.Button(frame, text="Send Message", command=self.manage_communication).pack()
+
+    # ...existing code...
 class Property:
     def __init__(self, name):
         self.name = name
