@@ -5,13 +5,14 @@ import random
 
 GAME_WIDTH = 700
 GAME_HEIGHT = 700
-SPEED = 200
-SPACE_SIZE = 50
+SPEED = 100  # Increased speed for a more dynamic game
+SPACE_SIZE = 25  # Smaller space size for a more detailed snake
 BODY_PARTS = 3
 SNAKE_COLOR = "#00FF00"
 FOOD_COLOR = "#FF0000"
-BACKGROUND_COLOR = "#000000"
-
+BACKGROUND_COLOR = "#1E1E1E"  # Darker background for better contrast
+GAME_OVER_COLOR = "#FF6347"  # Tomato color for game over text
+SNAKE_OUTLINE_COLOR = "#006400"  # Dark green outline for snake
 
 class Snake:
 
@@ -24,7 +25,7 @@ class Snake:
             self.coordinates.append([0, 0])
 
         for x, y in self.coordinates:
-            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=SNAKE_COLOR, tag="snake")
+            square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=SNAKE_COLOR, outline=SNAKE_OUTLINE_COLOR, tag="snake")
             self.squares.append(square)
 
 
@@ -55,7 +56,7 @@ def next_turn(snake, food):
 
     snake.coordinates.insert(0, (x, y))
 
-    square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=SNAKE_COLOR)
+    square = canvas.create_rectangle(x, y, x + SPACE_SIZE, y + SPACE_SIZE, fill=SNAKE_COLOR, outline=SNAKE_OUTLINE_COLOR, tag="snake")
 
     snake.squares.insert(0, square)
 
@@ -124,17 +125,17 @@ def game_over():
 
     canvas.delete(ALL)
     canvas.create_text(canvas.winfo_width()/2, canvas.winfo_height()/2,
-                       font=('consolas',70), text="GAME OVER", fill="red", tag="gameover")
+                       font=('consolas', 70), text="GAME OVER", fill=GAME_OVER_COLOR, tag="gameover")
 
 
 window = Tk()
-window.title("Snake game")
+window.title("Snake Game")
 window.resizable(False, False)
 
 score = 0
 direction = 'down'
 
-label = Label(window, text="Score:{}".format(score), font=('consolas', 40))
+label = Label(window, text="Score:{}".format(score), font=('consolas', 40), bg=BACKGROUND_COLOR, fg="white")
 label.pack()
 
 canvas = Canvas(window, bg=BACKGROUND_COLOR, height=GAME_HEIGHT, width=GAME_WIDTH)
